@@ -12,9 +12,9 @@ provider "azurerm" {
 }
 
 locals {
-  rg_name  = "mt-pocv2"
+  rg_name  = "mt-poc"
   location = "UK South"
-  prefix   = "mt-pocv2"
+  prefix   = "mt"
 }
 
 # -----------------------------
@@ -68,9 +68,10 @@ resource "azurerm_lb" "lb" {
   }
 }
 
+# Backend Pool
 resource "azurerm_lb_backend_address_pool" "bepool" {
   loadbalancer_id = azurerm_lb.lb.id
-  name            = "${local.prefix}-bepool"
+  name            = "BackEndPool"
 }
 
 # -----------------------------
@@ -78,7 +79,7 @@ resource "azurerm_lb_backend_address_pool" "bepool" {
 # -----------------------------
 resource "azurerm_lb_probe" "probe" {
   loadbalancer_id = azurerm_lb.lb.id
-  name            = "${local.prefix}-probe"
+  name            = "http-probe"
   protocol        = "Tcp"
   port            = 80
 }
@@ -88,7 +89,7 @@ resource "azurerm_lb_probe" "probe" {
 # -----------------------------
 resource "azurerm_lb_rule" "lbrule" {
   loadbalancer_id                = azurerm_lb.lb.id
-  name                           = "${local.prefix}-http-rule"
+  name                           = "http-rule"
   protocol                       = "Tcp"
   frontend_port                  = 80
   backend_port                   = 80
@@ -97,12 +98,13 @@ resource "azurerm_lb_rule" "lbrule" {
   probe_id                       = azurerm_lb_probe.probe.id
 }
 
+
 # -----------------------------
 # INBOUND NAT RULES FOR RDP
 # -----------------------------
 resource "azurerm_lb_nat_rule" "rdp" {
   count                          = 2
-  name                           = "${local.prefix}-rdp-${count.index + 1}"
+  name                           = "rdp-${count.index}"
   resource_group_name            = azurerm_resource_group.rg.name
   loadbalancer_id                = azurerm_lb.lb.id
   protocol                       = "Tcp"
@@ -110,6 +112,14 @@ resource "azurerm_lb_nat_rule" "rdp" {
   backend_port                   = 3389
   frontend_ip_configuration_name = "LoadBalancerFrontEnd"
 }
+
+
+
+
+
+
+
+
 
 # -----------------------------
 # NETWORK SECURITY GROUP
@@ -145,11 +155,11 @@ resource "azurerm_network_security_group" "nsg" {
 }
 
 # -----------------------------
-# NETWORK INTERFACES
+# NETWORK INTERFACES (NICs)
 # -----------------------------
 resource "azurerm_network_interface" "nic" {
   count               = 2
-  name                = "${local.prefix}-nic-${count.index + 1}"
+  name                = "${local.prefix}-nic-${count.index}"
   location            = local.location
   resource_group_name = azurerm_resource_group.rg.name
 
@@ -160,7 +170,7 @@ resource "azurerm_network_interface" "nic" {
   }
 }
 
-# NIC → LB Backend Pool
+# NIC → LB Backend Pool Mapping (New syntax)
 resource "azurerm_network_interface_backend_address_pool_association" "nic_lb" {
   count                   = 2
   network_interface_id    = azurerm_network_interface.nic[count.index].id
@@ -168,13 +178,24 @@ resource "azurerm_network_interface_backend_address_pool_association" "nic_lb" {
   backend_address_pool_id = azurerm_lb_backend_address_pool.bepool.id
 }
 
-# NIC → NAT RULE
+
+# -----------------------------
+# NIC → NAT RULE ASSOCIATION
+# -----------------------------
 resource "azurerm_network_interface_nat_rule_association" "nic_rdp" {
   count                 = 2
   network_interface_id  = azurerm_network_interface.nic[count.index].id
   ip_configuration_name = "ipconfig1"
   nat_rule_id           = azurerm_lb_nat_rule.rdp[count.index].id
 }
+
+
+
+
+
+
+
+
 
 # Attach NSG
 resource "azurerm_network_interface_security_group_association" "assoc" {
@@ -184,11 +205,11 @@ resource "azurerm_network_interface_security_group_association" "assoc" {
 }
 
 # -----------------------------
-# WINDOWS VMS
+# WINDOWS 2016 IIS VMs
 # -----------------------------
 resource "azurerm_windows_virtual_machine" "vm" {
   count               = 2
-  name                = "${local.prefix}-0${count.index + 1}"
+  name                = "${local.prefix}-iis-${count.index}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = local.location
   size                = "Standard_D2s_v3"
@@ -207,7 +228,7 @@ resource "azurerm_windows_virtual_machine" "vm" {
   }
 
   os_disk {
-    name                 = "${local.prefix}-disk-${count.index + 1}"
+    name                 = "${local.prefix}-disk-${count.index}"
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
   }

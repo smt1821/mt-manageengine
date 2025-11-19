@@ -1,0 +1,46 @@
+New-Item -ItemType Directory -Path "C:\inetpub\wwwroot\login" -Force
+New-Item -ItemType Directory -Path "C:\inetpub\wwwroot\login\test1" -Force
+New-Item -ItemType Directory -Path "C:\inetpub\wwwroot\login\test2" -Force
+
+Set-Content -Path "C:\inetpub\wwwroot\login\index.html" -Value "<h1>LOGIN ROOT</h1>"
+Set-Content -Path "C:\inetpub\wwwroot\login\test1\index.html" -Value "<h1>TEST 1 PAGE</h1>"
+Set-Content -Path "C:\inetpub\wwwroot\login\test2\index.html" -Value "<h1>TEST 2 PAGE</h1>"
+
+Import-Module WebAdministration
+
+New-WebApplication `
+    -Name "login" `
+    -Site "Default Web Site" `
+    -PhysicalPath "C:\inetpub\wwwroot\login" `
+    -ApplicationPool "DefaultAppPool"
+
+New-WebApplication `
+    -Name "test1" `
+    -Site "Default Web Site" `
+    -Application "/login" `
+    -PhysicalPath "C:\inetpub\wwwroot\login\test1" `
+    -ApplicationPool "test1"
+
+
+Get-WebApplication | Select-Object Path,PhysicalPath,ApplicationPool
+
+
+
+New-WebApplication `
+  -Site "Default Web Site" `
+  -Name "login" `
+  -PhysicalPath "C:\inetpub\wwwroot\login" `
+  -ApplicationPool "DefaultAppPool"
+
+
+New-WebApplication `
+  -Site "Default Web Site" `
+  -Name "login/test1" `
+  -PhysicalPath "C:\inetpub\wwwroot\login\test1" `
+  -ApplicationPool "test1"
+
+New-WebApplication `
+  -Site "Default Web Site" `
+  -Name "login/test2" `
+  -PhysicalPath "C:\inetpub\wwwroot\login\test1" `
+  -ApplicationPool "test2"

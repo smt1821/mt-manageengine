@@ -7,6 +7,6 @@ terraform {
     }
 
     # IMPORTANT: ensures local execution
-    
+
   }
 }
